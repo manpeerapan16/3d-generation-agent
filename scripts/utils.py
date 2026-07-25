@@ -138,6 +138,57 @@ def validate_image(image_path: str) -> bool:
         return False
 
 
+def convert_mesh_formats(model_path: str, output_dir: Path) -> dict:
+    """
+    Ensure both .obj and .glb versions exist for a 3D model.
+    If the source is .obj, converts to .glb and vice versa.
+
+    Args:
+        model_path: Path to the source 3D model file.
+        output_dir: Directory where both formats will be saved.
+
+    Returns:
+        Dict with paths: {"obj": Path, "glb": Path} or partial if conversion fails.
+    """
+    import trimesh
+
+    source = Path(model_path)
+    ext = source.suffix.lower()
+    results = {}
+
+    try:
+        # Load the mesh
+        mesh = trimesh.load(str(source), force="mesh")
+
+        # Save .obj
+        obj_path = output_dir / "model.obj"
+        if ext == ".obj":
+            shutil.copy2(str(source), str(obj_path))
+        else:
+            mesh.export(str(obj_path), file_type="obj")
+        results["obj"] = obj_path
+
+        # Save .glb
+        glb_path = output_dir / "model.glb"
+        if ext == ".glb":
+            shutil.copy2(str(source), str(glb_path))
+        else:
+            mesh.export(str(glb_path), file_type="glb")
+        results["glb"] = glb_path
+
+        print(f"    Exported: model.obj + model.glb")
+
+    except Exception as e:
+        print(f"    Conversion warning: {e}")
+        # At minimum, copy the original file
+        dest = output_dir / f"model{ext}"
+        if not dest.exists():
+            shutil.copy2(str(source), str(dest))
+        results[ext.lstrip(".")] = dest
+
+    return results
+
+
 def list_outputs() -> list:
     """
     List all generated outputs with their metadata.

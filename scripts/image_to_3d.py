@@ -22,6 +22,7 @@ from scripts.utils import (
     save_file,
     print_result,
     validate_image,
+    convert_mesh_formats,
 )
 
 
@@ -202,9 +203,9 @@ def image_to_3d(
         # Copy input image
         save_file(image_path, output_dir, "input_image.png")
 
-        # Save 3D model
+        # Save 3D model in both .obj and .glb formats
         model_ext = space_info["output_format"]
-        saved_model = save_file(str(model_path), output_dir, f"model.{model_ext}")
+        saved_formats = convert_mesh_formats(str(model_path), output_dir)
 
         # Save metadata
         save_metadata(output_dir, {
@@ -218,9 +219,9 @@ def image_to_3d(
             "target_face_num": target_face_num if space == "triposg" else None,
             "foreground_ratio": foreground_ratio if space == "triposr" else None,
             "resolution": resolution if space == "triposr" else None,
-            "output_format": model_ext,
+            "output_formats": list(saved_formats.keys()),
             "duration_seconds": round(duration, 2),
-            "output_file": str(saved_model),
+            "output_files": {k: str(v) for k, v in saved_formats.items()},
         })
 
         print_result("Image → 3D Complete", output_dir, duration)

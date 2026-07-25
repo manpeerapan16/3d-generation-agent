@@ -16,7 +16,7 @@ from gradio_client import Client, handle_file
 
 # Add parent to path for utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from scripts.utils import get_output_dir, save_metadata, save_file, print_result
+from scripts.utils import get_output_dir, save_metadata, save_file, print_result, convert_mesh_formats
 from scripts.text_to_image import text_to_image
 from scripts.image_to_3d import image_to_3d
 
@@ -86,8 +86,8 @@ def text_to_3d_direct(
         # Save to output directory
         output_dir = get_output_dir(project_name or "text_to_3d")
 
-        model_ext = space_info["output_format"]
-        saved_model = save_file(str(model_path), output_dir, f"model.{model_ext}")
+        # Save 3D model in both .obj and .glb formats
+        saved_formats = convert_mesh_formats(str(model_path), output_dir)
 
         # Save metadata
         save_metadata(output_dir, {
@@ -99,9 +99,9 @@ def text_to_3d_direct(
             "seed": seed,
             "num_steps": num_steps,
             "guidance_scale": guidance_scale,
-            "output_format": model_ext,
+            "output_formats": list(saved_formats.keys()),
             "duration_seconds": round(duration, 2),
-            "output_file": str(saved_model),
+            "output_files": {k: str(v) for k, v in saved_formats.items()},
         })
 
         print_result("Text → 3D (Direct) Complete", output_dir, duration)
@@ -181,16 +181,16 @@ def text_to_3d_twostage(
     # Consolidate output into one folder
     final_dir = get_output_dir(project_name or "text_to_3d_twostage")
 
-    # Copy relevant files to final directory
+    # Copy reference image
     for f in image_dir.iterdir():
         if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
             save_file(str(f), final_dir, "reference_image.png")
             break
 
+    # Copy all model formats (.obj and .glb) from model_dir
     for f in model_dir.iterdir():
         if f.suffix.lower() in (".obj", ".glb", ".fbx", ".stl", ".ply"):
             save_file(str(f), final_dir, f"model{f.suffix}")
-            break
 
     # Save combined metadata
     save_metadata(final_dir, {
